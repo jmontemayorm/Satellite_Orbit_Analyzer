@@ -144,11 +144,6 @@ public class SOA_Example {
       // Add event detector to the propagator.
       kepler.addEventDetector(stationVisibility);
       
-      // PROPAGATION DETAILS
-      double duration = 7.0*24.0*60.0*60.0; // [s]
-      AbsoluteDate finalDate = initialDate.shiftedBy(duration);
-      double stepT = 60.0; // [s]
-      
       // FILE WRITERS: file names
       String sunAnglesFileName = "ERNST_i98_1929_a700_SunAngles.csv";
       String earthAnglesFileName = "ERNST_i98_1929_a700_EarthAngles.csv";
@@ -161,6 +156,11 @@ public class SOA_Example {
       sunAngles.println("\"Time (UTCG)\",\"Azimuth (deg)\",\"Elevation (deg)\",\"Subsolar (deg)\"");
       earthAngles.println("\"Time (UTCG)\",\"Azimuth (deg)\",\"Elevation (deg)\"");
       accessTimes.println("\"Access\",\"Start Time (UTCG)\",\"Stop Time (UTCG)\",\"Duration (sec)\"");
+      
+      // PROPAGATION DETAILS
+      double duration = 7.0*24.0*60.0*60.0; // [s]
+      AbsoluteDate finalDate = initialDate.shiftedBy(duration);
+      double stepT = 60.0; // [s]
       
       // PROPAGATION
       System.out.println("Propagating..."); // Progress indicator
