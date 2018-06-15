@@ -1,12 +1,15 @@
-/* Back-end of Satellite Orbit Analizer: Satellite
+/* Back-end of Satellite Orbit Analizer: Satellite Class
  * 
  * Author: Javier Montemayor
  * Created: 2018-06-13
  * Last update: 2018-06-15
  * 
+ * To-do:
+ * - Set PrintWriters (Dictionary, HashMap) for AccessTimes
+ * 
  * To-do in another file (main):
  * - Create the Earth Stations (or geographic zones? <-- add geographic zone detector)
- * - Read file with TLEs, set a list or array or SOA objects and create all the propagators, add all the detectors
+ * - Read file with TLEs, set a list of Satellite objects and create all the propagators, add all the detectors
  * - ...
  */
 
@@ -31,7 +34,7 @@ import java.io.*;
 import java.util.*;
 
 // Satellite Class
-public class Satellite {
+public class Satellite implements Runnable {
   // Defaults and Other Finals
   private static final Locale loc = new Locale("EN","US");
   
@@ -40,18 +43,19 @@ public class Satellite {
   private static double duration, stepT;
   private static Propagator propagator;
   private static int accessNum = 1; // Reset before every propagation
-  private static PrintWriter sunAnglesPrinter, earthAnglesPrinter, accessTimesPrinter;// logPrinter; //?????
+  private static PrintWriter sunAnglesPrinter, earthAnglesPrinter;// log???
   private static String sunAnglesName, earthAnglesName, accessTimesName;
   private static DataProvidersManager manager;
   private static CelestialBody sunBody, earthBody;
   private static Frame inertialFrame;
-  private static boolean printSun = false, printEarth = false, printAccess = false;
+  private static boolean printSun = false, printEarth = false, printAccess = true;
+  private static Map<String,PrintWriter> accessTimesPrinters = new HashMap<String,PrintWriter>();
   
   // Satellite Constructor
   public Satellite() {
     try {
       // Try default configuration
-      File orekitData = new File("orekit-data");
+      File orekitData = new File("Libraries/orekit-data");
       manager = DataProvidersManager.getInstance();
       manager.addProvider(new DirectoryCrawler(orekitData));
       
@@ -61,15 +65,16 @@ public class Satellite {
       
       // Set inertial frame
       inertialFrame = FramesFactory.getEME2000();
+      
+      ////////////////////////////////////// TEMPORARY CODE FOR TESTING ///////////////////////////////////////////////
+      initialDate = new AbsoluteDate(2021, 01, 01, 00, 00, 00.000, TimeScalesFactory.getUTC());
+      duration = 24.0*60.0*60.0; // [s]
+      finalDate = initialDate.shiftedBy(duration);
+      stepT = 60.0;
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     } catch (Exception e) {
-      System.out.println(e);
+      System.out.println("Error on Satellite constructor: " + e);
     }
-  }
-  
-  // Set Sun Angles printer (file name) and activate
-  public void setSunAnglesPrinter(String fileName) {
-    sunAnglesName = fileName;
-    printSun = true;
   }
   
   // Turn on Sun Angles printer
@@ -82,12 +87,6 @@ public class Satellite {
     printSun = false;
   }
   
-  // Set Earth Angles printer
-  public void setEarthAnglesPrinter(String fileName) {
-    earthAnglesName = fileName;
-    printEarth = true;
-  }
-  
   // Turn on Earth Angles printer
   public void turnOnEarthAnglesPrinter() {
     printEarth = true;
@@ -96,22 +95,6 @@ public class Satellite {
   // Turn off Earth Angles printer
   public void turnOffEarthAnglesPrinter() {
     printEarth = false;
-  }
-  
-  // Set Access Times Printer
-  public void setAccessTimesPrinter(String fileName) {
-    accessTimesName = fileName;
-    printAccess = true;
-  }
-  
-  // Turn on Access Times printer
-  public void turnOnAccessTimesPrinter() {
-    printAccess = true;
-  }
-  
-  // Turn off Access Times printer
-  public void turnOffAccessTimesPrinter() {
-    printAccess = false;
   }
   
   // Sets a TLE propagator
@@ -127,7 +110,7 @@ public class Satellite {
       // Success, return true
       return true;
     } catch (Exception e) {
-      System.out.println(e);
+      System.out.println("Error setting TLE: " + e);
     }
     
     // An error occurred, return false
@@ -145,11 +128,11 @@ public class Satellite {
         new ElevationDetector(maxCheck, threshold, station
                              ).withConstantElevation(Math.toRadians(elevationDeg)
                                                     ).withHandler(new VisibilityHandler());
-      
+      propagator.addEventDetector(elevDetect);
       // Success, return true
       return true;
     } catch (Exception e) {
-      System.out.println(e);
+      System.out.println("Error setting elevation detector: " + e);
     }
     
     // An error occurred, return false
@@ -157,17 +140,17 @@ public class Satellite {
   }
   
   // Starts propagation, returns false if something has not been setup // CHANGE NAME TO RUN()?
-  public boolean propagate() {
+  public void run() {
     // Check if everything is set to perform propagation /////////////////////////////////////////////////////////////////////////// CORRECT FOR WHEN PRINTER INACTIVE DOESNT MATTER
-    if (propagator == null || initialDate == null || finalDate == null || stepT == 0 || sunAnglesName == null ||
-        earthAnglesName == null || accessTimesName == null) {
+    if (propagator == null || initialDate == null || finalDate == null || stepT == 0) {
       // Something is missing (log error?), return false
-      return false;
+      System.out.println("The satellite has not been fully set.");
+      //return false;
     } else {
       // All should be set to perform the propagation
       try {
-        // Reset access counter, set accessBegin as initialDate in case propagation starts on an access
-        accessNum = 1;
+        // Reset access counter, set accessBegin as initialDate in case propagation starts during an access
+        accessNum = 1; // <-- Needs one variable per detector, dictionary
         accessBegin = initialDate;
         
         // Set PrintWriters
@@ -175,8 +158,6 @@ public class Satellite {
           sunAnglesPrinter = new PrintWriter(sunAnglesName,"UTF-8");
         if (printEarth)
           earthAnglesPrinter = new PrintWriter(earthAnglesName,"UTF-8");
-        if (printAccess)
-          accessTimesPrinter = new PrintWriter(accessTimesName,"UTF-8"); // CHECH THIS ONE
         
         for (AbsoluteDate extrapDate = initialDate; extrapDate.compareTo(finalDate) <= 0; extrapDate = extrapDate.shiftedBy(stepT)) {
           // Get current state
@@ -254,9 +235,6 @@ public class Satellite {
                                       dateComps.getYear(),timeComps.getHour(),timeComps.getMinute(),timeComps.getSecond(),
                                       earthAzim,earthElev);
           }
-          
-          
-          ///////// INCOMPLETE ///////////////////// MAKE SURE TO SET ACCESSTIME PRINTER
         }
         
         // Close PrintWriters
@@ -264,13 +242,12 @@ public class Satellite {
           sunAnglesPrinter.close();
         if (printEarth)
           earthAnglesPrinter.close();
-        if (printAccess)
-          accessTimesPrinter.close(); // CHECH THIS ONE
+        
       }catch (Exception e) {
-        System.out.println(e);
+        System.out.println("Error while running: " + e);
       }
-      
-      return true;
+      System.out.println("Finished propagation.");
+      //return true;
     }
   }
   
@@ -287,27 +264,24 @@ public class Satellite {
       } else {
         accessEnd = s.getDate();
         
-        if (printAccess) {
-          try{
-            double visDuration = accessEnd.durationFrom(accessBegin);
-            DateTimeComponents compsBegin = accessBegin.getComponents(0); // Synched with UTC
-            DateTimeComponents compsEnd = accessEnd.getComponents(0); // Synched with UTC
-            DateComponents dateBegin = compsBegin.getDate();
-            DateComponents dateEnd = compsEnd.getDate();
-            TimeComponents timeBegin = compsBegin.getTime();
-            TimeComponents timeEnd = compsEnd.getTime();
-            
-            // PRINT STATION NAME??
-            
-            accessTimesPrinter.printf(loc,"%d,%d %s %d %02d:%02d:%06.3f,%d %s %d %02d:%02d:%06.3f,%07.3f\n",accessNum++,
-                                      dateBegin.getDay(),dateBegin.getMonthEnum().getCapitalizedAbbreviation(),
-                                      dateBegin.getYear(),timeBegin.getHour(),timeBegin.getMinute(),timeBegin.getSecond(),
-                                      dateEnd.getDay(),dateEnd.getMonthEnum().getCapitalizedAbbreviation(),dateEnd.getYear(),
-                                      timeEnd.getHour(),timeEnd.getMinute(),timeEnd.getSecond(),visDuration);
-          } catch (Exception ex) {
-            System.out.println("Error calculating or writing to Access Times file.\n" + ex);
-          }
-        }
+//        try{
+//          double visDuration = accessEnd.durationFrom(accessBegin);
+//          DateTimeComponents compsBegin = accessBegin.getComponents(0); // Synched with UTC
+//          DateTimeComponents compsEnd = accessEnd.getComponents(0); // Synched with UTC
+//          DateComponents dateBegin = compsBegin.getDate();
+//          DateComponents dateEnd = compsEnd.getDate();
+//          TimeComponents timeBegin = compsBegin.getTime();
+//          TimeComponents timeEnd = compsEnd.getTime();
+//          
+//          //accessTimesPrinters.get(detector.getTopocentricFrame().getName()).
+//          System.out.printf(loc,"%d,%d %s %d %02d:%02d:%06.3f,%d %s %d %02d:%02d:%06.3f,%07.3f\n",accessNum++,
+//                            dateBegin.getDay(),dateBegin.getMonthEnum().getCapitalizedAbbreviation(),dateBegin.getYear(),
+//                            timeBegin.getHour(),timeBegin.getMinute(),timeBegin.getSecond(),dateEnd.getDay(),
+//                            dateEnd.getMonthEnum().getCapitalizedAbbreviation(),dateEnd.getYear(),timeEnd.getHour(),
+//                            timeEnd.getMinute(),timeEnd.getSecond(),visDuration);
+//        } catch (Exception ex) {
+//          System.out.println("Error calculating or writing to Access Times file: " + ex);
+//        }
         
         return Action.STOP;
       }
