@@ -26,6 +26,7 @@ import org.hipparchus.geometry.euclidean.threed.*;
 // Java Libraries
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 // SOA Class
 public class SOA {
@@ -106,14 +107,25 @@ public class SOA {
       sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg);
       sat2.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg);
       
-      Thread thread_1 = new Thread(sat1),
-        thread_2 = new Thread(sat2);
+      ExecutorService pool = Executors.newFixedThreadPool(2);
       
-      thread_1.start();
-      thread_2.start();
+      pool.execute(sat1);
+      pool.execute(sat2);
       
-      thread_1.join();
-      thread_2.join();
+      pool.shutdown(); // Keeps running current tasks until they finish
+      
+      while (!pool.isTerminated()) {
+        
+      }
+      
+//      Thread thread_1 = new Thread(sat1),
+//        thread_2 = new Thread(sat2);
+//      
+//      thread_1.start();
+//      thread_2.start();
+//      
+//      thread_1.join();
+//      thread_2.join();
       
       endTime = System.currentTimeMillis();
       System.out.println("Done.");
