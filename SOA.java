@@ -75,7 +75,11 @@ public class SOA {
       System.out.println("Setting up ground station 2..."); // Progress indicator
       longitude = Math.toRadians(-7.84965); // 
       latitude = Math.toRadians(-47.6652); // 
+<<<<<<< HEAD
       altitude = 325.036; // [m]
+=======
+      altitude = 325.036; // [m]??? 0.325036 km
+>>>>>>> 9e1fd8fd2dcc786b40fa85bdec01ea1271e2bee9
       GeodeticPoint stationUnknown = new GeodeticPoint(latitude, longitude, altitude); // Create location point
       // Topocentric frame for the ground station.
       TopocentricFrame stationFrameUnknown = new TopocentricFrame(earth, stationUnknown, "StationUnknown");
@@ -100,7 +104,11 @@ public class SOA {
       // Add event detectors
       double maxCheck  = 60.0;
       double threshold =  0.001;
+<<<<<<< HEAD
       double elevationDeg = 10.0; // [deg]
+=======
+      double elevationDeg = 10.0;
+>>>>>>> 9e1fd8fd2dcc786b40fa85bdec01ea1271e2bee9
       sat1.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg);
       sat1.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg);
       sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg);
