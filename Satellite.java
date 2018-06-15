@@ -282,7 +282,6 @@ public class Satellite implements Runnable {
 //        } catch (Exception ex) {
 //          System.out.println("Error calculating or writing to Access Times file: " + ex);
 //        }
-        
         return Action.STOP;
       }
     }
