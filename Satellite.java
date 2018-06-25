@@ -152,6 +152,28 @@ public class Satellite implements Runnable {
     stepT = s;
     return true;
   }
+  
+  // Sets the sun angles filename
+  public boolean setSunPath(String p) {
+    if (satName == null) {
+      System.out.println("Please set the satellite name first.");
+      return false;
+    }
+    
+    sunAnglesName = p + "/" + satName + "_sunAngles.csv";
+    return true;
+  }
+  
+  // Sets the earth angles filename
+  public boolean setEarthPath(String p) {
+    if (satName == null) {
+      System.out.println("Please set the satellite name first.");
+      return false;
+    }
+    
+    earthAnglesName = p + "/" + satName + "_earthAngles.csv";
+    return true;
+  }
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
   ///////////////////////////////////////////////// "SET ALL" METHODS /////////////////////////////////////////////////
@@ -206,11 +228,6 @@ public class Satellite implements Runnable {
         stationDir.mkdirs();
       
       String fName = stationFolder + "/" + satName + ".csv";
-      
-      ////////////////////////////////////////////// TEMPORARY CODE /////////////////////////////////////////////////// //////////////////////////////////////////////////////////////////////////////// CHECK THIS //////////////////////////////////////////////////////////////////////////////////////
-      sunAnglesName = satName + "_sunAngles.csv";
-      earthAnglesName = satName + "_earthAngles.csv";
-      ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// //////////////////////////////////////////////////////////////////////////////// CHECK THIS //////////////////////////////////////////////////////////////////////////////////////
       
       if (printAccess)
         accessTimesPrinters.put(station.getName(), new PrintWriter(fName,"UTF-8"));

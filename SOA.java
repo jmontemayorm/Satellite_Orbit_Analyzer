@@ -114,6 +114,10 @@ public class SOA {
       sat1.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
       sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
       sat2.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
+      sat1.setSunPath(sunPath);
+      sat1.setEarthPath(earthPath);
+      sat2.setSunPath(sunPath);
+      sat2.setEarthPath(earthPath);
       
       ExecutorService pool = Executors.newFixedThreadPool(2);
       
