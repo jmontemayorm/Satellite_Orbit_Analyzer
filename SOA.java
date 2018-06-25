@@ -1,4 +1,4 @@
-/* Back-end of Satellite Orbit Analizer: SAO (Main)
+/* Back-end of Satellite Orbit Analizer: SOA (Main)
  * Used to test the Satellite Class before the development of a GUI
  * 
  * Author: Javier Montemayor
@@ -63,7 +63,7 @@ public class SOA {
       System.out.println("Setting up ground station 1..."); // Progress indicator
       double longitude = Math.toRadians(7.84965); // Freiburg longitude
       double latitude = Math.toRadians(47.6652); // Freiburg latitude
-      double altitude = 325.036; // [m]??? 0.325036 km
+      double altitude = 325.036; // [m]
       GeodeticPoint stationFreiburg = new GeodeticPoint(latitude, longitude, altitude); // Create location point
       // Topocentric frame for the ground station.
       Frame earthFrame = FramesFactory.getITRF(IERSConventions.IERS_2010, true);
@@ -94,25 +94,27 @@ public class SOA {
       
       // Add propagators (random satellites for testing)
       sat1.setTLEPropagator("1 37846U 11060A   18165.13732692 -.00000060  00000-0  00000-0 0  9997",
-                            "2 37846  56.1041  61.6028 0004426 354.3829   5.6503  1.70475882 41387");
+                            "2 37846  56.1041  61.6028 0004426 354.3829   5.6503  1.70475882 41387",
+                            "Sat1");
       sat2.setTLEPropagator("1 33312U 08040A   18155.81913053  .00000031  00000-0  10873-4 0  9991",
-                            "2 33312  97.7864 231.7937 0011171 286.7797  73.2178 14.79883098527520");
+                            "2 33312  97.7864 231.7937 0011171 286.7797  73.2178 14.79883098527520",
+                            "Sat2");
       
       // Add event detectors
       double maxCheck  = 60.0;
       double threshold =  0.001;
       double elevationDeg = 10.0; // [deg]
-      sat1.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg);
-      sat1.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg);
-      sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg);
-      sat2.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg);
+      sat1.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
+      sat1.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
+      sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
+      sat2.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
       
       ExecutorService pool = Executors.newFixedThreadPool(2);
       
       pool.execute(sat1);
       pool.execute(sat2);
       
-      pool.shutdown(); // Keeps running current tasks until they finish
+      pool.shutdown(); // Keeps running current tasks until they finish, disable new tasks from being submitted
       
       while (!pool.isTerminated()) {
         

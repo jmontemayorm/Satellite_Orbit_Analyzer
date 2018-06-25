@@ -2,14 +2,9 @@
  * 
  * Author: Javier Montemayor
  * Created: 2018-06-13
- * Last update: 2018-06-15
+ * Last update: 2018-06-25
  * 
  * To-do:
- * - Set PrintWriters (Dictionary, HashMap) for AccessTimes
- * 
- * To-do in another file (main):
- * - Create the Earth Stations (or geographic zones? <-- add geographic zone detector)
- * - Read file with TLEs, set a list of Satellite objects and create all the propagators, add all the detectors
  * - ...
  */
 
@@ -39,17 +34,22 @@ public class Satellite implements Runnable {
   private static final Locale loc = new Locale("EN","US");
   
   // Class Variables
-  private AbsoluteDate initialDate, finalDate, accessBegin, accessEnd;
+  private AbsoluteDate initialDate, finalDate;
   private double duration, stepT;
   private Propagator propagator;
-  private int accessNum = 1; // Reset before every propagation
-  private PrintWriter sunAnglesPrinter, earthAnglesPrinter;// log???
-  private String sunAnglesName, earthAnglesName, accessTimesName;
   private static DataProvidersManager manager;
   private CelestialBody sunBody, earthBody;
   private Frame inertialFrame;
-  private boolean printSun = false, printEarth = false, printAccess = true;
+  private String satName;
+  
+  // Printing Related Class Variables
+  private boolean printSun = true, printEarth = true, printAccess = true;
+  private String sunAnglesName, earthAnglesName;
+  private PrintWriter sunAnglesPrinter, earthAnglesPrinter;// log???
   private Map<String,PrintWriter> accessTimesPrinters = new HashMap<String,PrintWriter>();
+  private Map<String,Integer> accessNum = new HashMap<String,Integer>();
+  private Map<String,AbsoluteDate> accessBegin = new HashMap<String,AbsoluteDate>();
+  private Map<String,AbsoluteDate> accessEnd = new HashMap<String,AbsoluteDate>(); // Probably not required
   
   // Satellite Constructor
   public Satellite() {
@@ -66,45 +66,23 @@ public class Satellite implements Runnable {
       // Set inertial frame
       inertialFrame = FramesFactory.getEME2000();
       
-      ////////////////////////////////////// TEMPORARY CODE FOR TESTING ///////////////////////////////////////////////
-      initialDate = new AbsoluteDate(2021, 01, 01, 00, 00, 00.000, TimeScalesFactory.getUTC());
-      duration = 30.0*24.0*60.0*60.0; // [s]
-      finalDate = initialDate.shiftedBy(duration);
-      stepT = 60.0;
-      /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     } catch (Exception e) {
       System.out.println("Error on Satellite constructor: " + e);
     }
   }
   
-  // Turn on Sun Angles printer
-  public void turnOnSunAnglesPrinter() {
-    printSun = true;
-  }
-  
-  // Turn off Sun Angles printer
-  public void turnOffSunAnglesPrinter() {
-    printSun = false;
-  }
-  
-  // Turn on Earth Angles printer
-  public void turnOnEarthAnglesPrinter() {
-    printEarth = true;
-  }
-  
-  // Turn off Earth Angles printer
-  public void turnOffEarthAnglesPrinter() {
-    printEarth = false;
-  }
-  
+  ////////////////////////////////////////////// SET PROPAGATOR METHODS ///////////////////////////////////////////////
   // Sets a TLE propagator
-  public boolean setTLEPropagator(String line1, String line2) {
+  public boolean setTLEPropagator(String line1, String line2, String name) {
     try {
       // Set propagator (if there was a previous one, it will be replaced)
       TLE tle = new TLE(line1,line2);
       propagator = TLEPropagator.selectExtrapolator(tle);
       
       propagator.setSlaveMode();
+      
+      satName = name;
+      
       
       // Success, return true
       return true;
@@ -115,9 +93,101 @@ public class Satellite implements Runnable {
     // An error occurred, return false
     return false;
   }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
+  //////////////////////////////////////////////// SET PRINTER METHODS ////////////////////////////////////////////////
+  // Turn on/off Sun Angles printer (default is true)
+  public void printSunAngles(boolean state) {
+    printSun = state;
+  }
+  
+  // Turn on/off Earth Angles printer (default is true)
+  public void printEarthAngles(boolean state) {
+    printEarth = state;
+  }
+  
+  // Turn on/off Access Times printers (default is true)
+  public void printAccessTimes(boolean state) {
+    printAccess = state;
+  }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  ////////////////////////////////////////////// INDIVIDUAL SET METHODS ///////////////////////////////////////////////
+  // Sets an initial date
+  public void setInitialDate(AbsoluteDate date) {
+    initialDate = date;
+  }
+  
+  // Sets a duration
+  public boolean setDuration(double s) {
+    if (initialDate == null || s <= 0.0)
+      return false;
+    
+    duration = s;
+    finalDate = initialDate.shiftedBy(duration);
+    return true;
+  }
+  
+  // Sets a final date
+  public boolean setFinalDate(AbsoluteDate date) {
+    if (initialDate == null)
+      return false;
+    
+    finalDate = date;
+    duration = finalDate.durationFrom(initialDate);
+    
+    if (duration <= 0.0) {
+      finalDate = null;
+      return false;
+    }
+    
+    return true;
+  }
+  
+  // Sets a step size
+  public boolean setStep(double s) {
+    if (s <= 0.0)
+      return false;
+    
+    stepT = s;
+    return true;
+  }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  ///////////////////////////////////////////////// "SET ALL" METHODS /////////////////////////////////////////////////
+  // Sets all (initial date, final date by duration, step size)
+  public boolean setAll(AbsoluteDate iDate, double dur, double step) {
+    setInitialDate(iDate);
+    
+    return setDuration(dur) && setStep(step);
+  }
+  
+  // Sets all (initial date, final date, step size)
+  public boolean setAll(AbsoluteDate iDate, AbsoluteDate fDate, double step) {
+    setInitialDate(iDate);
+    
+    return setFinalDate(fDate) && setStep(step);
+  }
+  
+  // Sets all (initial date, final date by duration, step size, TLE prop)
+  public boolean setAll(AbsoluteDate iDate, double dur, double step, String line1, String line2, String sName) {
+    setInitialDate(iDate);
+    
+    return setDuration(dur) && setStep(step) && setTLEPropagator(line1, line2, sName);
+  }
+  
+  // Sets all (initial date, final date, step size, TLE prop)
+  public boolean setAll(AbsoluteDate iDate, AbsoluteDate fDate, double step, String line1, String line2, String sName) {
+    setInitialDate(iDate);
+    
+    return setFinalDate(fDate) && setStep(step) && setTLEPropagator(line1, line2, sName);
+  }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  /////////////////////////////////////////////// SET DETECTOR METHODS ////////////////////////////////////////////////
   // Sets an elevation detector for the given station
-  public boolean setElevationDetector(TopocentricFrame station, double maxCheck, double threshold, double elevationDeg) {
+  public boolean setElevationDetector(TopocentricFrame station, double maxCheck, double threshold, double elevationDeg,
+                                      String accessPath) {
     // If no propagator has been provided, return false
     if (propagator == null)
       return false;
@@ -128,6 +198,23 @@ public class Satellite implements Runnable {
                              ).withConstantElevation(Math.toRadians(elevationDeg)
                                                     ).withHandler(new VisibilityHandler());
       propagator.addEventDetector(elevDetect);
+      
+      // Create the station folder in case it does not exist //// THIS COULD BE DONE BEFORE?
+      String stationFolder = accessPath + "/" + station.getName();
+      File stationDir = new File(stationFolder);
+      if (!stationDir.exists())
+        stationDir.mkdirs();
+      
+      String fName = stationFolder + "/" + satName + ".csv";
+      
+      ////////////////////////////////////////////// TEMPORARY CODE /////////////////////////////////////////////////// //////////////////////////////////////////////////////////////////////////////// CHECK THIS //////////////////////////////////////////////////////////////////////////////////////
+      sunAnglesName = satName + "_sunAngles.csv";
+      earthAnglesName = satName + "_earthAngles.csv";
+      ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// //////////////////////////////////////////////////////////////////////////////// CHECK THIS //////////////////////////////////////////////////////////////////////////////////////
+      
+      if (printAccess)
+        accessTimesPrinters.put(station.getName(), new PrintWriter(fName,"UTF-8"));
+      
       // Success, return true
       return true;
     } catch (Exception e) {
@@ -137,20 +224,22 @@ public class Satellite implements Runnable {
     // An error occurred, return false
     return false;
   }
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
-  // Starts propagation, returns false if something has not been setup // CHANGE NAME TO RUN()?
+  ////////////////////////////////////////////////////// RUN //////////////////////////////////////////////////////////
+  // Starts propagation, returns false if something has not been setup
   public void run() {
-    // Check if everything is set to perform propagation /////////////////////////////////////////////////////////////////////////// CORRECT FOR WHEN PRINTER INACTIVE DOESNT MATTER
     if (propagator == null || initialDate == null || finalDate == null || stepT == 0) {
       // Something is missing (log error?), return false
       System.out.println("The satellite has not been fully set.");
-      //return false;
     } else {
       // All should be set to perform the propagation
       try {
-        // Reset access counter, set accessBegin as initialDate in case propagation starts during an access
-        accessNum = 1; // <-- Needs one variable per detector, dictionary
-        accessBegin = initialDate;
+        // Reset or initializes access counter, set accessBegin as initialDate in case propagation starts during an access
+        for (String key : accessTimesPrinters.keySet()) {
+          accessNum.put(key,1);
+          accessBegin.put(key,initialDate);
+        }
         
         // Set PrintWriters
         if (printSun)
@@ -242,11 +331,16 @@ public class Satellite implements Runnable {
         if (printEarth)
           earthAnglesPrinter.close();
         
+        if (printAccess) {
+          for (String key : accessTimesPrinters.keySet()) {
+            accessTimesPrinters.get(key).close();
+          }
+        }
+        
       }catch (Exception e) {
         System.out.println("Error while running: " + e);
       }
       System.out.println("Finished propagation.");
-      //return true;
     }
   }
   
@@ -258,30 +352,37 @@ public class Satellite implements Runnable {
         return Action.STOP;
       
       if (increasing) {
-        accessBegin = s.getDate();
+        accessBegin.put(detector.getTopocentricFrame().getName(),s.getDate());
         
         return Action.CONTINUE;
       } else {
-        accessEnd = s.getDate();
+        //accessEnd.put(detector.getTopocentricFrame().getName(),s.getDate());
         
-//        try{
-//          double visDuration = accessEnd.durationFrom(accessBegin);
-//          DateTimeComponents compsBegin = accessBegin.getComponents(0); // Synched with UTC
-//          DateTimeComponents compsEnd = accessEnd.getComponents(0); // Synched with UTC
-//          DateComponents dateBegin = compsBegin.getDate();
-//          DateComponents dateEnd = compsEnd.getDate();
-//          TimeComponents timeBegin = compsBegin.getTime();
-//          TimeComponents timeEnd = compsEnd.getTime();
-//          
-//          //accessTimesPrinters.get(detector.getTopocentricFrame().getName()).
-//          System.out.printf(loc,"%d,%d %s %d %02d:%02d:%06.3f,%d %s %d %02d:%02d:%06.3f,%07.3f\n",accessNum++,
-//                            dateBegin.getDay(),dateBegin.getMonthEnum().getCapitalizedAbbreviation(),dateBegin.getYear(),
-//                            timeBegin.getHour(),timeBegin.getMinute(),timeBegin.getSecond(),dateEnd.getDay(),
-//                            dateEnd.getMonthEnum().getCapitalizedAbbreviation(),dateEnd.getYear(),timeEnd.getHour(),
-//                            timeEnd.getMinute(),timeEnd.getSecond(),visDuration);
-//        } catch (Exception ex) {
-//          System.out.println("Error calculating or writing to Access Times file: " + ex);
-//        }
+        AbsoluteDate aEnd = s.getDate();
+        
+        if (printAccess) {
+          try{
+            double visDuration = aEnd.durationFrom(accessBegin.get(detector.getTopocentricFrame().getName()));
+            DateTimeComponents compsBegin =
+              accessBegin.get(detector.getTopocentricFrame().getName()).getComponents(0); // Synched with UTC
+            DateTimeComponents compsEnd = aEnd.getComponents(0); // Synched with UTC
+            DateComponents dateBegin = compsBegin.getDate();
+            DateComponents dateEnd = compsEnd.getDate();
+            TimeComponents timeBegin = compsBegin.getTime();
+            TimeComponents timeEnd = compsEnd.getTime();
+            
+            int aNum = accessNum.get(detector.getTopocentricFrame().getName());
+            accessTimesPrinters.get(detector.getTopocentricFrame().getName()).
+              printf(loc,"%d,%d %s %d %02d:%02d:%06.3f,%d %s %d %02d:%02d:%06.3f,%07.3f\n",aNum++,
+                     dateBegin.getDay(),dateBegin.getMonthEnum().getCapitalizedAbbreviation(),dateBegin.getYear(),
+                     timeBegin.getHour(),timeBegin.getMinute(),timeBegin.getSecond(),dateEnd.getDay(),
+                     dateEnd.getMonthEnum().getCapitalizedAbbreviation(),dateEnd.getYear(),timeEnd.getHour(),
+                     timeEnd.getMinute(),timeEnd.getSecond(),visDuration);
+            accessNum.put(detector.getTopocentricFrame().getName(),aNum);
+          } catch (Exception ex) {
+            System.out.println("Error calculating or writing to Access Times file: " + ex);
+          }
+        }
         return Action.STOP;
       }
     }
