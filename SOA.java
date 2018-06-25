@@ -100,6 +100,12 @@ public class SOA {
                             "2 33312  97.7864 231.7937 0011171 286.7797  73.2178 14.79883098527520",
                             "Sat2");
       
+      // Set the propagators
+      TimeScale utc = TimeScalesFactory.getUTC();
+      AbsoluteDate initialDate = new AbsoluteDate(2021, 01, 01, 00, 00, 00.000, utc);
+      sat1.setAll(initialDate, 7.0*24.0*60.0*60.0, 60.0);
+      sat2.setAll(initialDate, 7.0*24.0*60.0*60.0, 60.0);
+      
       // Add event detectors
       double maxCheck  = 60.0;
       double threshold =  0.001;
