@@ -5,7 +5,10 @@
  * Last update: 2018-06-25
  * 
  * To-do:
- * - ...
+ * - Implement a way of saving and opening a satellite. Useful info:
+ *    - TLEPropagator: resetInitialState?(SpacecraftState state)
+ *    - SpacecraftState implements Serializable
+ *    - http://www.avajava.com/tutorials/lessons/how-do-i-write-an-object-to-a-file-and-read-it-back.html
  */
 
 // Orekit Libraries
