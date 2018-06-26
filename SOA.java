@@ -3,8 +3,9 @@
  * 
  * Author: Javier Montemayor
  * Created: 2018-06-15
- * Last update: 2018-06-15
+ * Last update: 2018-06-26
  * 
+ * NOTE: Satellite name must NOT contain "/"
  */
 
 // Orekit Libraries
@@ -89,55 +90,76 @@ public class SOA {
       if (!sta2Dir.exists())
         sta2Dir.mkdir();
       
-      Satellite sat1 = new Satellite(),
-        sat2 = new Satellite();
+      String tleData[] = {"GAOFEN 6",
+        "1 43484U 18048A   18175.64917903  .00000090  00000-0  20207-4 0  9999",
+        "2 43484  98.0511 250.6242 0011130 204.4757 155.5967 14.76872906  3310",
+        "LUOJIA-1 01",
+        "1 43485U 18048B   18176.19543172  .00000162  00000-0  30774-4 0  9994",
+        "2 43485  98.0513 251.1590 0011141 192.8922 167.2009 14.76430878  3394",
+        "CZ-2D R_B",
+        "1 43486U 18048C   18176.17050062  .00000209  00000-0  36083-4 0  9995",
+        "2 43486  97.9294 250.8648 0015615 331.5140  28.5220 14.78039816  3408",
+        "CZ-2D DEB",
+        "1 43487U 18048D   18175.74559567  .00000300  00000-0  52004-4 0  9995",
+        "2 43487  97.9105 250.2877 0034493 178.3278 181.8048 14.74824729  3325",
+        "FALCON 9 R_B",
+        "1 43489U 18049B   18172.07707761  .00000272  00000-0  95130-4 0  9997",
+        "2 43489  26.0812 159.7201 8142749 173.6409 215.6535  1.28104506   227",
+        "CZ-2D DEB",
+        "1 43490U 18048E   18175.74350433  .00000158  00000-0  31385-4 0  9990",
+        "2 43490  98.1787 250.9844 0034951 179.7356 180.3876 14.74953045  3046",
+        "CZ-3A R_B",
+        "1 43492U 18050B   18175.97003206 -.00000252  00000-0  00000+0 0  9994",
+        "2 43492  24.6518  73.7869 7287125 193.6216 123.4239  2.23327886   443",
+        "SOYUZ-MS 09",
+        "1 43493U 18051A   18175.61067381  .00003886  00000-0  66303-4 0  9999",
+        "2 43493  51.6384 341.7075 0003783 223.8232 226.4905 15.53963728  2832",
+        "COSMOS 2527 [GLONASS-M]",
+        "1 43508U 18053A   18174.20839013  .00000096  00000-0  00000+0 0  9998",
+        "2 43508  64.8199 171.4822 0006440 231.7022 228.2698  2.12997363   138",
+        "FREGAT R_B",
+        "1 43509U 18053B   18175.14346324  .00000091  00000-0  10000-3 0  9991",
+        "2 43509  64.8777 171.3753 0090117 122.3110 238.5828  2.09216731   150",
+        "REMOVEDEBRIS",
+        "1 43510U 98067NT  18176.04402727  .00004239  00000-0  70628-4 0  9997",
+        "2 43510  51.6415 339.5336 0003442 223.8147 136.2571 15.54371761   701"
+      };
       
-      // Add propagators (random satellites for testing)
-      sat1.setTLEPropagator("1 37846U 11060A   18165.13732692 -.00000060  00000-0  00000-0 0  9997",
-                            "2 37846  56.1041  61.6028 0004426 354.3829   5.6503  1.70475882 41387",
-                            "Sat1");
-      sat2.setTLEPropagator("1 33312U 08040A   18155.81913053  .00000031  00000-0  10873-4 0  9991",
-                            "2 33312  97.7864 231.7937 0011171 286.7797  73.2178 14.79883098527520",
-                            "Sat2");
+      Map<Integer,Satellite> satCollection = new HashMap<Integer,Satellite>();
       
       // Set the propagators
       TimeScale utc = TimeScalesFactory.getUTC();
       AbsoluteDate initialDate = new AbsoluteDate(2021, 01, 01, 00, 00, 00.000, utc);
-      sat1.setAll(initialDate, 7.0*24.0*60.0*60.0, 60.0);
-      sat2.setAll(initialDate, 7.0*24.0*60.0*60.0, 60.0);
       
       // Add event detectors
       double maxCheck  = 60.0;
       double threshold =  0.001;
       double elevationDeg = 10.0; // [deg]
-      sat1.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
-      sat1.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
-      sat2.setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
-      sat2.setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
-      sat1.setSunPath(sunPath);
-      sat1.setEarthPath(earthPath);
-      sat2.setSunPath(sunPath);
-      sat2.setEarthPath(earthPath);
       
-      ExecutorService pool = Executors.newFixedThreadPool(2);
+      int numOfSats = tleData.length/3;
       
-      pool.execute(sat1);
-      pool.execute(sat2);
+      ExecutorService pool = Executors.newFixedThreadPool(numOfSats); // Number of elements in the map
+      
+      for (int i = 0; i < numOfSats; i++) {
+        satCollection.put(i, new Satellite());
+
+        satCollection.get(i).setTLEPropagator(tleData[i*3+1],tleData[i*3+2],tleData[i*3]);
+        satCollection.get(i).setAll(initialDate, 10.0*24.0*60.0*60.0, 60.0);
+        satCollection.get(i).setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
+        satCollection.get(i).setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
+        satCollection.get(i).setSunPath(sunPath);
+        satCollection.get(i).setEarthPath(earthPath);
+        
+        pool.execute(satCollection.get(i));
+      }
       
       pool.shutdown(); // Keeps running current tasks until they finish, disable new tasks from being submitted
+      
+      System.out.println("Waiting for execution to finish...");
       
       while (!pool.isTerminated()) {
         
       }
-      
-//      Thread thread_1 = new Thread(sat1),
-//        thread_2 = new Thread(sat2);
-//      
-//      thread_1.start();
-//      thread_2.start();
-//      
-//      thread_1.join();
-//      thread_2.join();
       
       endTime = System.currentTimeMillis();
       System.out.println("Done.");

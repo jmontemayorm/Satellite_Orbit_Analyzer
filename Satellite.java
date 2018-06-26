@@ -229,8 +229,11 @@ public class Satellite implements Runnable {
       
       String fName = stationFolder + "/" + satName + ".csv";
       
-      if (printAccess)
+      if (printAccess) {
         accessTimesPrinters.put(station.getName(), new PrintWriter(fName,"UTF-8"));
+        accessTimesPrinters.get(station.getName()).
+          println("\"Access\",\"Start Time (UTCG)\",\"Stop Time (UTCG)\",\"Duration (sec)\"");
+      }
       
       // Success, return true
       return true;
@@ -259,10 +262,14 @@ public class Satellite implements Runnable {
         }
         
         // Set PrintWriters
-        if (printSun)
+        if (printSun) {
           sunAnglesPrinter = new PrintWriter(sunAnglesName,"UTF-8");
-        if (printEarth)
+          sunAnglesPrinter.println("\"Time (UTCG)\",\"Azimuth (deg)\",\"Elevation (deg)\",\"Subsolar (deg)\"");
+        }
+        if (printEarth) {
           earthAnglesPrinter = new PrintWriter(earthAnglesName,"UTF-8");
+          earthAnglesPrinter.println("\"Time (UTCG)\",\"Azimuth (deg)\",\"Elevation (deg)\"");
+        }
         
         for (AbsoluteDate extrapDate = initialDate; extrapDate.compareTo(finalDate) <= 0; extrapDate = extrapDate.shiftedBy(stepT)) {
           // Get current state
@@ -273,6 +280,10 @@ public class Satellite implements Runnable {
           DateTimeComponents dateTimeComps = absDate.getComponents(0); // Synched with UTC
           DateComponents dateComps = dateTimeComps.getDate();
           TimeComponents timeComps = dateTimeComps.getTime();
+          
+          // If its before the initial date, skip
+//          if (absDate.compareTo(initialDate) <= 0)
+//            continue;
           
           // Get month string
           String monat = dateComps.getMonthEnum().getCapitalizedAbbreviation();
@@ -349,8 +360,8 @@ public class Satellite implements Runnable {
           earthAnglesPrinter.close();
         
         if (printAccess) {
-          for (String key : accessTimesPrinters.keySet()) {
-            accessTimesPrinters.get(key).close();
+          for (PrintWriter pWriter : accessTimesPrinters.values()) {
+            pWriter.close();
           }
         }
         
