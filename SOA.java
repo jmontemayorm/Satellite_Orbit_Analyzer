@@ -130,6 +130,7 @@ public class SOA {
       // Set the propagators
       TimeScale utc = TimeScalesFactory.getUTC();
       AbsoluteDate initialDate = new AbsoluteDate(2021, 01, 01, 00, 00, 00.000, utc);
+      AbsoluteDate finalDate = initialDate.shiftedBy(1.0*24.0*60.0*60.0);
       
       // Add event detectors
       double maxCheck  = 60.0;
@@ -144,7 +145,7 @@ public class SOA {
         satCollection.put(i, new Satellite());
 
         satCollection.get(i).setTLEPropagator(tleData[i*3+1],tleData[i*3+2],tleData[i*3]);
-        satCollection.get(i).setAll(initialDate, 10.0*24.0*60.0*60.0, 60.0);
+        satCollection.get(i).setAll(initialDate, finalDate, 60.0);
         satCollection.get(i).setElevationDetector(stationFrameFreiburg, maxCheck, threshold, elevationDeg, accessPath);
         satCollection.get(i).setElevationDetector(stationFrameUnknown, maxCheck, threshold, elevationDeg, accessPath);
         satCollection.get(i).setSunPath(sunPath);

@@ -49,7 +49,6 @@ public class Satellite implements Runnable {
   private Map<String,PrintWriter> accessTimesPrinters = new HashMap<String,PrintWriter>();
   private Map<String,Integer> accessNum = new HashMap<String,Integer>();
   private Map<String,AbsoluteDate> accessBegin = new HashMap<String,AbsoluteDate>();
-  private Map<String,AbsoluteDate> accessEnd = new HashMap<String,AbsoluteDate>(); // Probably not required
   
   // Satellite Constructor
   public Satellite() {
@@ -255,6 +254,9 @@ public class Satellite implements Runnable {
     } else {
       // All should be set to perform the propagation
       try {
+        // Propagate until the initial date is reached
+        while (propagator.propagate(initialDate).getDate().compareTo(initialDate) < 0) {}
+        
         // Reset or initializes access counter, set accessBegin as initialDate in case propagation starts during an access
         for (String key : accessTimesPrinters.keySet()) {
           accessNum.put(key,1);
@@ -271,9 +273,10 @@ public class Satellite implements Runnable {
           earthAnglesPrinter.println("\"Time (UTCG)\",\"Azimuth (deg)\",\"Elevation (deg)\"");
         }
         
+        SpacecraftState currentState;
         for (AbsoluteDate extrapDate = initialDate; extrapDate.compareTo(finalDate) <= 0; extrapDate = extrapDate.shiftedBy(stepT)) {
           // Get current state
-          SpacecraftState currentState = propagator.propagate(extrapDate);
+          currentState = propagator.propagate(extrapDate);
           
           // Get the absolute date, break down into date and time
           AbsoluteDate absDate = currentState.getDate();
@@ -368,7 +371,7 @@ public class Satellite implements Runnable {
       }catch (Exception e) {
         System.out.println("Error while running: " + e);
       }
-      System.out.println("Finished propagation.");
+      System.out.println("Finished propagation of " + satName + ".");
     }
   }
   
@@ -376,7 +379,8 @@ public class Satellite implements Runnable {
   private class VisibilityHandler implements EventHandler<ElevationDetector> {
     public Action eventOccurred(final SpacecraftState s, final ElevationDetector detector,
                                 final boolean increasing) {
-      if (s.getDate().compareTo(initialDate) <= 0)
+      // Ignore events before the initial date
+      if (s.getDate().compareTo(initialDate) < 0)
         return Action.STOP;
       
       if (increasing) {
@@ -384,8 +388,6 @@ public class Satellite implements Runnable {
         
         return Action.CONTINUE;
       } else {
-        //accessEnd.put(detector.getTopocentricFrame().getName(),s.getDate());
-        
         AbsoluteDate aEnd = s.getDate();
         
         if (printAccess) {
